@@ -121,7 +121,6 @@ pub async fn solve(
   ctx: Context<'_>,
   #[description = "The flag for the challenge"] flag: String,
 ) -> Result<(), Error> {
-  let flag = flag.trim();
   let channel_id = ctx.channel_id();
   let thread = channel_id
     .to_channel(ctx)
@@ -177,16 +176,17 @@ pub async fn solve(
 
   let new_name = format!("\u{2714}-{}", thread.name);
 
+  ctx.say("Marking challenge as solved.").await?;
+
   channel_id
     .edit_thread(
       ctx,
       serenity::EditThread::new()
         .name(&new_name)
-        .applied_tags(new_tags),
+        .applied_tags(new_tags)
+        .archived(true),
     )
     .await?;
-
-  ctx.say("Marking challenge as solved.").await?;
 
   let guild_id = ctx.guild_id().ok_or("Not in a guild")?;
   let threads = guild_id.get_active_threads(ctx).await?;
@@ -210,10 +210,6 @@ pub async fn solve(
       )
       .await?;
   }
-
-  channel_id
-    .edit_thread(ctx, serenity::EditThread::new().archived(true))
-    .await?;
 
   Ok(())
 }
