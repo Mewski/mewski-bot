@@ -1,7 +1,7 @@
 use crate::{Context, Error};
 use poise::serenity_prelude::{self as serenity, ChannelType};
 
-#[derive(Debug, poise::ChoiceParameter)]
+#[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
 pub enum Category {
   #[name = "pwn"]
   Pwn,
@@ -13,16 +13,22 @@ pub enum Category {
   Crypto,
   #[name = "web"]
   Web,
+  #[name = "misc"]
+  Misc,
+  #[name = "forensics"]
+  Forensics,
 }
 
 impl Category {
-  fn as_str(&self) -> &'static str {
+  pub fn as_str(&self) -> &'static str {
     match self {
       Category::Pwn => "pwn",
       Category::Rev => "rev",
       Category::Osint => "osint",
       Category::Crypto => "crypto",
       Category::Web => "web",
+      Category::Misc => "misc",
+      Category::Forensics => "forensics",
     }
   }
 }
