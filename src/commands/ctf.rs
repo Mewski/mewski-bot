@@ -18,14 +18,14 @@ pub async fn create(
     .to_channel(ctx)
     .await?
     .guild()
-    .and_then(|c| c.parent_id)
+    .and_then(|channel| channel.parent_id)
     .ok_or("Must be used in a category")?;
 
   let guild = guild_id.to_partial_guild(ctx).await?;
-  let existing = guild.channels(ctx).await?.into_iter().find(|(_, c)| {
-    c.kind == ChannelType::Forum
-      && c.parent_id == Some(parent_category)
-      && c.name.to_lowercase() == name.to_lowercase()
+  let existing = guild.channels(ctx).await?.into_iter().find(|(_, channel)| {
+    channel.kind == ChannelType::Forum
+      && channel.parent_id == Some(parent_category)
+      && channel.name.to_lowercase() == name.to_lowercase()
   });
 
   if let Some((_, existing)) = existing {

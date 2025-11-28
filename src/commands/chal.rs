@@ -66,10 +66,9 @@ pub async fn create(
 
   let guild_id = ctx.guild_id().ok_or("Not in a guild")?;
   let threads = guild_id.get_active_threads(ctx).await?;
-  let existing = threads
-    .threads
-    .iter()
-    .find(|t| t.parent_id == Some(forum.id) && t.name.to_lowercase() == name.to_lowercase());
+  let existing = threads.threads.iter().find(|thread| {
+    thread.parent_id == Some(forum.id) && thread.name.to_lowercase() == name.to_lowercase()
+  });
 
   if let Some(existing) = existing {
     return Err(format!("Challenge <#{}> already exists.", existing.id).into());
@@ -78,14 +77,14 @@ pub async fn create(
   let category_tag = forum
     .available_tags
     .iter()
-    .find(|t| t.name.to_lowercase() == category.as_str())
-    .map(|t| t.id);
+    .find(|tag| tag.name.to_lowercase() == category.as_str())
+    .map(|tag| tag.id);
 
   let unsolved_tag = forum
     .available_tags
     .iter()
-    .find(|t| t.name.to_lowercase() == "unsolved")
-    .map(|t| t.id);
+    .find(|tag| tag.name.to_lowercase() == "unsolved")
+    .map(|tag| tag.id);
 
   let mut applied_tags = Vec::new();
   if let Some(tag_id) = category_tag {
@@ -141,8 +140,8 @@ pub async fn solve(
   let solved_tag = forum
     .available_tags
     .iter()
-    .find(|t| t.name.to_lowercase() == "solved")
-    .map(|t| t.id);
+    .find(|tag| tag.name.to_lowercase() == "solved")
+    .map(|tag| tag.id);
 
   if let Some(tag_id) = solved_tag {
     if thread.applied_tags.contains(&tag_id) {
@@ -153,13 +152,13 @@ pub async fn solve(
   let unsolved_tag = forum
     .available_tags
     .iter()
-    .find(|t| t.name.to_lowercase() == "unsolved")
-    .map(|t| t.id);
+    .find(|tag| tag.name.to_lowercase() == "unsolved")
+    .map(|tag| tag.id);
 
   let mut new_tags: Vec<_> = thread
     .applied_tags
     .iter()
-    .filter(|&&t| Some(t) != unsolved_tag)
+    .filter(|&&tag_id| Some(tag_id) != unsolved_tag)
     .copied()
     .collect();
 
@@ -188,7 +187,7 @@ pub async fn solve(
   let general = threads
     .threads
     .iter()
-    .find(|t| t.parent_id == Some(parent_id) && t.name.to_lowercase() == "general");
+    .find(|thread| thread.parent_id == Some(parent_id) && thread.name.to_lowercase() == "general");
 
   if let Some(general) = general {
     general
