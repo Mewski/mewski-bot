@@ -182,8 +182,7 @@ pub async fn solve(
       ctx,
       serenity::EditThread::new()
         .name(&new_name)
-        .applied_tags(new_tags)
-        .archived(true),
+        .applied_tags(new_tags),
     )
     .await?;
 
@@ -211,6 +210,10 @@ pub async fn solve(
       )
       .await?;
   }
+
+  channel_id
+    .edit_thread(ctx, serenity::EditThread::new().archived(true))
+    .await?;
 
   Ok(())
 }
