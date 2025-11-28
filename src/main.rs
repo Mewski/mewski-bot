@@ -20,7 +20,7 @@ async fn main() -> Result<(), Error> {
 
   let framework = poise::Framework::builder()
     .options(poise::FrameworkOptions {
-      commands: vec![commands::ping(), commands::ctf(), commands::chal()],
+      commands: vec![commands::ctf(), commands::chal()],
       ..Default::default()
     })
     .setup(|ctx, _ready, framework| {
