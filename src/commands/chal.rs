@@ -181,7 +181,8 @@ pub async fn solve(
       ctx,
       serenity::EditThread::new()
         .name(&new_name)
-        .applied_tags(new_tags),
+        .applied_tags(new_tags)
+        .archived(true),
     )
     .await?;
 
