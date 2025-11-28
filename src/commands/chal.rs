@@ -121,6 +121,7 @@ pub async fn solve(
   ctx: Context<'_>,
   #[description = "The flag for the challenge"] flag: String,
 ) -> Result<(), Error> {
+  let flag = flag.trim();
   let channel_id = ctx.channel_id();
   let thread = channel_id
     .to_channel(ctx)
