@@ -1,1 +1,1 @@
-# Mewski CTF Bot
+# Mewski Bot

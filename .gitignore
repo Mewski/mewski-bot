@@ -1,5 +1,8 @@
-# Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,rust,macos
-# Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,rust,macos
+# Created by https://www.toptal.com/developers/gitignore/api/rust,macos,visualstudiocode,dotenv
+# Edit at https://www.toptal.com/developers/gitignore?templates=rust,macos,visualstudiocode,dotenv
+
+### dotenv ###
+.env
 
 ### macOS ###
 # General
@@ -69,4 +72,4 @@ Cargo.lock
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,rust,macos
+# End of https://www.toptal.com/developers/gitignore/api/rust,macos,visualstudiocode,dotenv
