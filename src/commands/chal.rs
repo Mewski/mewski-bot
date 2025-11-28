@@ -60,7 +60,7 @@ pub async fn create(
     .guild()
     .ok_or("Parent not found")?;
 
-  if forum.kind != ChannelType::Forum {
+  if forum.kind != ChannelType::Forum || !forum.name.to_lowercase().starts_with("ctf-") {
     return Err("Must be used inside a CTF forum's general channel.".into());
   }
 
@@ -113,7 +113,7 @@ pub async fn create(
 #[poise::command(slash_command, guild_only)]
 pub async fn solve(
   ctx: Context<'_>,
-  #[description = "The flag you found"] flag: String,
+  #[description = "The flag for the challenge"] flag: String,
 ) -> Result<(), Error> {
   let channel_id = ctx.channel_id();
   let thread = channel_id
@@ -133,7 +133,7 @@ pub async fn solve(
     .guild()
     .ok_or("Parent not found")?;
 
-  if forum.kind != ChannelType::Forum {
+  if forum.kind != ChannelType::Forum || !forum.name.to_lowercase().starts_with("ctf-") {
     return Err("Must be used inside a challenge channel.".into());
   }
 

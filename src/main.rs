@@ -9,9 +9,7 @@ pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-  pretty_env_logger::formatted_builder()
-    .filter_level(log::LevelFilter::Info)
-    .init();
+  pretty_env_logger::formatted_builder().init();
 
   dotenvy::dotenv().ok();
 

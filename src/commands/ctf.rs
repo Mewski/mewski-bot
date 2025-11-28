@@ -22,10 +22,11 @@ pub async fn create(
     .ok_or("Must be used in a category")?;
 
   let guild = guild_id.to_partial_guild(ctx).await?;
+  let forum_name = format!("ctf-{}", name);
   let existing = guild.channels(ctx).await?.into_iter().find(|(_, channel)| {
     channel.kind == ChannelType::Forum
       && channel.parent_id == Some(parent_category)
-      && channel.name.to_lowercase() == name.to_lowercase()
+      && channel.name.to_lowercase() == forum_name.to_lowercase()
   });
 
   if let Some((_, existing)) = existing {
@@ -35,7 +36,7 @@ pub async fn create(
   let mut forum = guild_id
     .create_channel(
       ctx,
-      serenity::CreateChannel::new(&name)
+      serenity::CreateChannel::new(&forum_name)
         .kind(ChannelType::Forum)
         .category(parent_category),
     )
