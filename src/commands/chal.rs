@@ -13,10 +13,10 @@ pub enum Category {
   Crypto,
   #[name = "web"]
   Web,
-  #[name = "misc"]
-  Misc,
   #[name = "forensics"]
   Forensics,
+  #[name = "misc"]
+  Misc,
 }
 
 impl Category {
@@ -27,8 +27,8 @@ impl Category {
       Category::Osint => "osint",
       Category::Crypto => "crypto",
       Category::Web => "web",
-      Category::Misc => "misc",
       Category::Forensics => "forensics",
+      Category::Misc => "misc",
     }
   }
 }
@@ -78,6 +78,10 @@ pub async fn create(
 
   if let Some(existing) = existing {
     return Err(format!("Challenge <#{}> already exists.", existing.id).into());
+  }
+
+  if name.starts_with('\u{2714}') || name.starts_with("\u{2714}-") {
+    return Err("Cannot create a challenge with a checkmark prefix (indicates solved).".into());
   }
 
   let category_tag = forum

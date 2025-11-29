@@ -1,7 +1,7 @@
 use crate::{Context, Error};
 use poise::serenity_prelude::{self as serenity, ChannelFlags, ChannelType};
 
-const CATEGORIES: &[&str] = &["pwn", "rev", "osint", "crypto", "web", "misc", "forensics"];
+const CATEGORIES: &[&str] = &["pwn", "rev", "osint", "crypto", "web", "forensics", "misc"];
 
 #[poise::command(slash_command, subcommands("create"))]
 pub async fn ctf(_ctx: Context<'_>) -> Result<(), Error> {
