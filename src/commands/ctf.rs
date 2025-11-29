@@ -49,12 +49,15 @@ pub async fn create(
     )
     .await?;
 
-  let mut tags: Vec<_> = CATEGORIES
-    .iter()
-    .map(|category| serenity::CreateForumTag::new(*category))
-    .collect();
-  tags.push(serenity::CreateForumTag::new("solved"));
-  tags.push(serenity::CreateForumTag::new("unsolved"));
+  let mut tags = vec![
+    serenity::CreateForumTag::new("unsolved"),
+    serenity::CreateForumTag::new("solved"),
+  ];
+  tags.extend(
+    CATEGORIES
+      .iter()
+      .map(|category| serenity::CreateForumTag::new(*category)),
+  );
 
   forum
     .edit(ctx, serenity::EditChannel::new().available_tags(tags))
