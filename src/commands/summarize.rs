@@ -145,7 +145,7 @@ pub async fn summarize(
 
   let chunks = chunk_str(summary, 2000);
   if let Some(first) = chunks.first() {
-    ctx.say(first).await?;
+    ctx.say(*first).await?;
   }
   for chunk in chunks.iter().skip(1) {
     ctx
