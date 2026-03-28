@@ -1,42 +1,49 @@
-use crate::{Context, Error};
 use poise::serenity_prelude::{self as serenity, ChannelFlags, ChannelType};
 
-const CATEGORIES: &[&str] = &["pwn", "rev", "osint", "crypto", "web", "forensics", "misc"];
+use crate::{Context, Error};
+
+const CATEGORIES: &[&str] = &[
+  "forensics",
+  "network",
+  "rev",
+  "crypto",
+  "web",
+  "stego",
+  "log-analysis",
+  "misc",
+];
 
 #[poise::command(slash_command, subcommands("create"))]
 pub async fn ctf(_ctx: Context<'_>) -> Result<(), Error> {
   Ok(())
 }
 
+/// Create a new CTF workspace.
 #[poise::command(slash_command, guild_only)]
-pub async fn create(
+async fn create(
   ctx: Context<'_>,
   #[description = "Name of the CTF"] name: String,
 ) -> Result<(), Error> {
   let guild_id = ctx.guild_id().ok_or("Must be used in a server")?;
-  let channel = ctx.channel_id();
-
-  let current_channel = channel
+  let channel = ctx
+    .channel_id()
     .to_channel(ctx)
     .await?
     .guild()
     .ok_or("Not a guild channel")?;
 
-  let parent_category = current_channel
-    .parent_id
-    .ok_or("Must be used in a category")?;
-  let position = current_channel.position + 1;
+  let category_id = channel.parent_id.ok_or("Run this inside a category")?;
 
+  let forum_name = format!("ctf-{name}");
   let guild = guild_id.to_partial_guild(ctx).await?;
-  let forum_name = format!("ctf-{}", name);
-  let existing = guild.channels(ctx).await?.into_iter().find(|(_, channel)| {
-    channel.kind == ChannelType::Forum
-      && channel.parent_id == Some(parent_category)
-      && channel.name.to_lowercase() == forum_name.to_lowercase()
-  });
+  let duplicate = guild
+    .channels(ctx)
+    .await?
+    .into_values()
+    .any(|ch| ch.kind == ChannelType::Forum && ch.name.eq_ignore_ascii_case(&forum_name));
 
-  if let Some((_, existing)) = existing {
-    return Err(format!("CTF <#{}> already exists.", existing.id).into());
+  if duplicate {
+    return Err(format!("A CTF named **{name}** already exists").into());
   }
 
   let mut forum = guild_id
@@ -44,44 +51,39 @@ pub async fn create(
       ctx,
       serenity::CreateChannel::new(&forum_name)
         .kind(ChannelType::Forum)
-        .category(parent_category)
-        .position(position),
+        .category(category_id)
+        .position(channel.position + 1),
     )
     .await?;
 
-  let mut tags = vec![
-    serenity::CreateForumTag::new("unsolved"),
-    serenity::CreateForumTag::new("solved"),
-  ];
-  tags.extend(
-    CATEGORIES
-      .iter()
-      .map(|category| serenity::CreateForumTag::new(*category)),
-  );
+  let tags: Vec<_> = ["unsolved", "solved"]
+    .iter()
+    .chain(CATEGORIES.iter())
+    .map(|t| serenity::CreateForumTag::new(*t))
+    .collect();
 
   forum
     .edit(ctx, serenity::EditChannel::new().available_tags(tags))
     .await?;
 
-  let general_thread = forum
+  let general = forum
     .create_forum_post(
       ctx,
       serenity::CreateForumPost::new(
         "General",
         serenity::CreateMessage::new().content(
-          "To get started, run `/chal create <name> <category>`\n\
-           Solve a challenge in its respective channel with `/chal solve <flag>`",
+          "Use `/chal create <name> <category>` to add challenges.\n\
+           Solve them with `/chal solve <flag>` in the challenge thread.",
         ),
       ),
     )
     .await?;
 
-  general_thread
+  general
     .id
     .edit_thread(ctx, serenity::EditThread::new().flags(ChannelFlags::PINNED))
     .await?;
 
   ctx.say(format!("Created <#{}>.", forum.id)).await?;
-
   Ok(())
 }

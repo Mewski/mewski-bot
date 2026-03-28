@@ -23,7 +23,7 @@
         let
           overlays = [ rust-overlay.overlays.default ];
           pkgs' = import inputs.nixpkgs { inherit system overlays; };
-          rustToolchain = pkgs'.rust-bin.stable.latest.default.override {
+          rustToolchain = pkgs'.rust-bin.nightly.latest.default.override {
             extensions = [ "rust-src" ];
           };
         in

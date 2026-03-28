@@ -1,36 +1,66 @@
+use poise::serenity_prelude::{self as serenity, ChannelType, GuildChannel};
+
 use crate::{Context, Error};
-use poise::serenity_prelude::{self as serenity, ChannelType};
 
 #[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
 pub enum Category {
-  #[name = "pwn"]
-  Pwn,
+  #[name = "forensics"]
+  Forensics,
+  #[name = "network"]
+  Network,
   #[name = "rev"]
   Rev,
-  #[name = "osint"]
-  Osint,
   #[name = "crypto"]
   Crypto,
   #[name = "web"]
   Web,
-  #[name = "forensics"]
-  Forensics,
+  #[name = "stego"]
+  Stego,
+  #[name = "log-analysis"]
+  LogAnalysis,
   #[name = "misc"]
   Misc,
 }
 
 impl Category {
-  pub fn as_str(&self) -> &'static str {
+  fn as_str(&self) -> &'static str {
     match self {
-      Category::Pwn => "pwn",
-      Category::Rev => "rev",
-      Category::Osint => "osint",
-      Category::Crypto => "crypto",
-      Category::Web => "web",
-      Category::Forensics => "forensics",
-      Category::Misc => "misc",
+      Self::Forensics => "forensics",
+      Self::Network => "network",
+      Self::Rev => "rev",
+      Self::Crypto => "crypto",
+      Self::Web => "web",
+      Self::Stego => "stego",
+      Self::LogAnalysis => "log-analysis",
+      Self::Misc => "misc",
     }
   }
+}
+
+/// Resolve the parent forum of a thread, validating it's a CTF forum.
+async fn resolve_ctf_forum(ctx: Context<'_>, thread: &GuildChannel) -> Result<GuildChannel, Error> {
+  let parent_id = thread
+    .parent_id
+    .ok_or("This thread has no parent channel")?;
+  let forum = parent_id
+    .to_channel(ctx)
+    .await?
+    .guild()
+    .ok_or("Parent channel not found")?;
+
+  if forum.kind != ChannelType::Forum || !forum.name.starts_with("ctf-") {
+    return Err("This command must be used inside a CTF forum".into());
+  }
+
+  Ok(forum)
+}
+
+fn find_tag_id(forum: &GuildChannel, name: &str) -> Option<serenity::ForumTagId> {
+  forum
+    .available_tags
+    .iter()
+    .find(|t| t.name.eq_ignore_ascii_case(name))
+    .map(|t| t.id)
 }
 
 #[poise::command(slash_command, subcommands("create", "solve"))]
@@ -38,167 +68,121 @@ pub async fn chal(_ctx: Context<'_>) -> Result<(), Error> {
   Ok(())
 }
 
+/// Add a challenge to the current CTF.
 #[poise::command(slash_command, guild_only)]
-pub async fn create(
+async fn create(
   ctx: Context<'_>,
-  #[description = "Name of the challenge"] name: String,
-  #[description = "Category of the challenge"] category: Category,
+  #[description = "Challenge name"] name: String,
+  #[description = "Challenge category"] category: Category,
 ) -> Result<(), Error> {
-  let channel = ctx.channel_id();
-
-  let current_channel = channel
+  let thread = ctx
+    .channel_id()
     .to_channel(ctx)
     .await?
     .guild()
     .ok_or("Not a guild channel")?;
 
-  if current_channel.kind != ChannelType::PublicThread
-    || current_channel.name.to_lowercase() != "general"
-    || !current_channel.applied_tags.is_empty()
+  if thread.kind != ChannelType::PublicThread
+    || !thread.name.eq_ignore_ascii_case("general")
+    || !thread.applied_tags.is_empty()
   {
-    return Err("Must be used inside a CTF forum's general channel.".into());
+    return Err("Run this in the CTF's **General** thread".into());
   }
 
-  let parent_id = current_channel.parent_id.ok_or("Thread has no parent")?;
-  let forum = parent_id
-    .to_channel(ctx)
-    .await?
-    .guild()
-    .ok_or("Parent not found")?;
+  let forum = resolve_ctf_forum(ctx, &thread).await?;
 
-  if forum.kind != ChannelType::Forum || !forum.name.to_lowercase().starts_with("ctf-") {
-    return Err("Must be used inside a CTF forum's general channel.".into());
+  if name.starts_with('\u{2714}') {
+    return Err("Challenge names cannot start with a checkmark".into());
   }
 
   let guild_id = ctx.guild_id().ok_or("Not in a guild")?;
-  let threads = guild_id.get_active_threads(ctx).await?;
-  let existing = threads.threads.iter().find(|thread| {
-    thread.parent_id == Some(forum.id) && thread.name.to_lowercase() == name.to_lowercase()
-  });
-
-  if let Some(existing) = existing {
-    return Err(format!("Challenge <#{}> already exists.", existing.id).into());
-  }
-
-  if name.starts_with('\u{2714}') || name.starts_with("\u{2714}-") {
-    return Err("Cannot create a challenge with a checkmark prefix (indicates solved).".into());
-  }
-
-  let category_tag = forum
-    .available_tags
+  let active = guild_id.get_active_threads(ctx).await?;
+  let duplicate = active
+    .threads
     .iter()
-    .find(|tag| tag.name.to_lowercase() == category.as_str())
-    .map(|tag| tag.id);
+    .any(|t| t.parent_id == Some(forum.id) && t.name.eq_ignore_ascii_case(&name));
 
-  let unsolved_tag = forum
-    .available_tags
-    .iter()
-    .find(|tag| tag.name.to_lowercase() == "unsolved")
-    .map(|tag| tag.id);
-
-  let mut applied_tags = Vec::new();
-  if let Some(tag_id) = category_tag {
-    applied_tags.push(tag_id);
-  }
-  if let Some(tag_id) = unsolved_tag {
-    applied_tags.push(tag_id);
+  if duplicate {
+    return Err(format!("Challenge **{name}** already exists").into());
   }
 
-  let thread = forum
+  let mut tags = Vec::new();
+  if let Some(id) = find_tag_id(&forum, category.as_str()) {
+    tags.push(id);
+  }
+  if let Some(id) = find_tag_id(&forum, "unsolved") {
+    tags.push(id);
+  }
+
+  let post = forum
     .id
     .create_forum_post(
       ctx,
       serenity::CreateForumPost::new(&name, serenity::CreateMessage::new().content(&name))
-        .set_applied_tags(applied_tags),
+        .set_applied_tags(tags),
     )
     .await?;
 
   ctx
-    .say(format!("{} created <#{}>.", ctx.author(), thread.id))
+    .say(format!("{} created <#{}>", ctx.author(), post.id))
     .await?;
-
   Ok(())
 }
 
+/// Mark the current challenge as solved.
 #[poise::command(slash_command, guild_only)]
-pub async fn solve(
-  ctx: Context<'_>,
-  #[description = "The flag for the challenge"] flag: String,
-) -> Result<(), Error> {
-  let channel_id = ctx.channel_id();
-  let thread = channel_id
+async fn solve(ctx: Context<'_>, #[description = "The flag"] flag: String) -> Result<(), Error> {
+  let thread = ctx
+    .channel_id()
     .to_channel(ctx)
     .await?
     .guild()
     .ok_or("Not a guild channel")?;
 
   if thread.kind != ChannelType::PublicThread || thread.applied_tags.is_empty() {
-    return Err("Must be used inside a challenge channel.".into());
+    return Err("Run this inside a challenge thread".into());
   }
 
-  let parent_id = thread.parent_id.ok_or("Thread has no parent")?;
-  let forum = parent_id
-    .to_channel(ctx)
-    .await?
-    .guild()
-    .ok_or("Parent not found")?;
+  let forum = resolve_ctf_forum(ctx, &thread).await?;
 
-  if forum.kind != ChannelType::Forum || !forum.name.to_lowercase().starts_with("ctf-") {
-    return Err("Must be used inside a challenge channel.".into());
-  }
-
-  let solved_tag = forum
-    .available_tags
-    .iter()
-    .find(|tag| tag.name.to_lowercase() == "solved")
-    .map(|tag| tag.id);
-
-  if let Some(tag_id) = solved_tag {
-    if thread.applied_tags.contains(&tag_id) {
-      return Err("This challenge is already solved.".into());
+  let solved_id = find_tag_id(&forum, "solved");
+  if let Some(id) = solved_id {
+    if thread.applied_tags.contains(&id) {
+      return Err("This challenge is already solved".into());
     }
   }
 
-  let unsolved_tag = forum
-    .available_tags
-    .iter()
-    .find(|tag| tag.name.to_lowercase() == "unsolved")
-    .map(|tag| tag.id);
-
+  let unsolved_id = find_tag_id(&forum, "unsolved");
   let mut new_tags: Vec<_> = thread
     .applied_tags
     .iter()
-    .filter(|&&tag_id| Some(tag_id) != unsolved_tag)
     .copied()
+    .filter(|id| Some(*id) != unsolved_id)
     .collect();
 
-  if let Some(tag_id) = solved_tag {
-    if !new_tags.contains(&tag_id) {
-      new_tags.push(tag_id);
-    }
+  if let Some(id) = solved_id {
+    new_tags.push(id);
   }
 
-  let new_name = format!("\u{2714}-{}", thread.name);
+  ctx.say("Marking as solved.").await?;
 
-  ctx.say("Marking challenge as solved.").await?;
-
-  channel_id
+  ctx
+    .channel_id()
     .edit_thread(
       ctx,
       serenity::EditThread::new()
-        .name(&new_name)
+        .name(format!("\u{2714}-{}", thread.name))
         .applied_tags(new_tags)
         .archived(true),
     )
     .await?;
 
   let guild_id = ctx.guild_id().ok_or("Not in a guild")?;
-  let threads = guild_id.get_active_threads(ctx).await?;
-
-  let general = threads
+  let active = guild_id.get_active_threads(ctx).await?;
+  let general = active
     .threads
     .iter()
-    .find(|thread| thread.parent_id == Some(parent_id) && thread.name.to_lowercase() == "general");
+    .find(|t| t.parent_id == Some(forum.id) && t.name.eq_ignore_ascii_case("general"));
 
   if let Some(general) = general {
     general
@@ -206,10 +190,10 @@ pub async fn solve(
       .send_message(
         ctx,
         serenity::CreateMessage::new().content(format!(
-          "{} solved challenge <#{}> with ||{}||",
+          "{} solved **{}** with ||`{}`||",
           ctx.author(),
-          channel_id,
-          flag
+          thread.name,
+          flag.trim(),
         )),
       )
       .await?;

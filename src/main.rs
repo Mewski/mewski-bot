@@ -14,11 +14,12 @@ async fn main() -> Result<(), Error> {
   dotenvy::dotenv().ok();
 
   let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
-  let intents = serenity::GatewayIntents::non_privileged();
+  let intents =
+    serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
   let framework = poise::Framework::builder()
     .options(poise::FrameworkOptions {
-      commands: vec![commands::ctf(), commands::chal()],
+      commands: vec![commands::ctf(), commands::chal(), commands::summarize()],
       ..Default::default()
     })
     .setup(|ctx, _ready, framework| {
