@@ -18,7 +18,7 @@ Run from a challenge thread. Swaps `unsolved` for `solved`, renames the thread w
 
 ### `/summarize [messages]`
 
-Summarizes key discoveries and findings from the current channel using Claude. Parses text and images. Defaults to the last 50 messages (max 200). Requires the `claude` CLI on the host.
+Summarizes key discoveries and findings from the current channel using Claude. Parses text and images. Defaults to the last 100 messages (max 500). Requires the `claude` CLI on the host.
 
 ## Setup
 
