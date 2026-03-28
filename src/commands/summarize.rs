@@ -143,10 +143,14 @@ pub async fn summarize(
     return Err("Claude returned an empty response".into());
   }
 
-  for chunk in chunk_str(summary, 2000) {
+  let chunks = chunk_str(summary, 2000);
+  if let Some(first) = chunks.first() {
+    ctx.say(first).await?;
+  }
+  for chunk in chunks.iter().skip(1) {
     ctx
       .channel_id()
-      .send_message(ctx, CreateMessage::new().content(chunk))
+      .send_message(ctx, CreateMessage::new().content(*chunk))
       .await?;
   }
 
